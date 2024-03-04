@@ -1,5 +1,5 @@
 # BulkChanges
-Projeto .NET 8 para realizar alterações em massa em arquivos HTML utilizando a biblioteca AngleSharp.
+Projeto .NET 8 para realizar alterações em massa em arquivos HTML utilizando a biblioteca [AngleSharp](https://github.com/AngleSharp/AngleSharp).
 
 ## Configurando o Projeto
 
