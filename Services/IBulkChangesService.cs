@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Hosting;
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace BulkChanges.Services;
@@ -17,9 +18,9 @@ internal interface IBulkChangesService : IHostedService
     /// <returns>
     ///     <see cref="Task{TResult}"/><br/>
     ///     Uma Task que resultará em um <see cref="MemoryStream"/> contento a
-    ///     cópia em memória do arquivo original.
+    ///     cópia em memória do arquivo original e o encoding detectado do arquivo.
     /// </returns>
-    Task<MemoryStream> LoadFileAsync(string originalPath);
+    Task<(MemoryStream originalContents, Encoding encoding)> LoadFileAsync(string originalPath);
 
     /// <summary>
     ///     Salva as alterações em disco.

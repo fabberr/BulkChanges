@@ -26,30 +26,24 @@ internal sealed class BulkChangesService(ILoggerFactory                loggerFac
     private readonly BulkChangesSettings         _settings                = options.Value;
     #endregion
 
-    private static Encoding? DetectEncoding(Stream stream)
+    #region Private
+    private static Encoding? DetectEncoding(string path)
     {
         try
         {
-            if (stream.CanSeek)
-            {
-                stream.Seek(0, SeekOrigin.Begin);
-            }
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read);
 
-            var encodingType = EncodingIdentifier.IdentifyEncoding(stream);
+            var encodingType = EncodingIdentifier.IdentifyEncoding(stream: stream, enableAsciiDetector: true);
             var encodingDotNetName = EncodingTypeUtils.GetDotNetName(encodingType);
 
-            if (!string.IsNullOrEmpty(encodingDotNetName))
-            {
-                return Encoding.GetEncoding(encodingDotNetName);
-            }
-        }
-        catch
-        {
-            return null;
-        }
+            if (string.IsNullOrEmpty(encodingDotNetName)) { return null; }
 
-        return null; // Return null or a default value in case of error
+            var encoding = Encoding.GetEncoding(encodingDotNetName);
+            return encoding/* == Encoding.UTF8 ? encoding : Encoding.ASCII*/;
+        }
+        catch { return null; }
     }
+    #endregion
 
     #region Métodos Interface IHostedService
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -74,9 +68,8 @@ internal sealed class BulkChangesService(ILoggerFactory                loggerFac
 
             string originalPath = file.FullName;
 
-            using var originalContents = await LoadFileAsync(originalPath);
-            var encoding = DetectEncoding(originalContents) ?? Encoding.UTF8;
-            using var updatedContents  = await _bulkChangesOperation.DoChangesAsync(originalContents, Encoding.UTF8.Equals(encoding) ? encoding : Encoding.ASCII);
+            var (originalContents, encoding) = await LoadFileAsync(originalPath);
+            using var updatedContents  = await _bulkChangesOperation.DoChangesAsync(originalContents, encoding);
 
             await SaveChangesAsync(updatedContents, originalPath);
         }
@@ -98,16 +91,24 @@ internal sealed class BulkChangesService(ILoggerFactory                loggerFac
     ///
     /// <inheritdoc cref="IBulkChangesService.LoadFileAsync(string)"/>
     ///
-    public async Task<MemoryStream> LoadFileAsync(string originalPath)
+    public async Task<(MemoryStream originalContents, Encoding encoding)> LoadFileAsync(string originalPath)
     {
-        var source = new FileStream(path: originalPath, mode: FileMode.Open, access: FileAccess.Read, share: FileShare.Read,
-                                    bufferSize: 4096, options: FileOptions.SequentialScan | FileOptions.Asynchronous);
-        var destination = new MemoryStream();
+        var encoding = DetectEncoding(path: originalPath) ?? Encoding.UTF8;
 
-        using (source) { await source.CopyToAsync(destination); }
-        destination.Position = 0;
+        var streamReader = new StreamReader(path: originalPath, encoding: encoding);
 
-        return destination;
+        var originalContents = new MemoryStream();
+        using (streamReader)
+        {
+            await originalContents.WriteAsync(
+                buffer: encoding.GetBytes(
+                    await streamReader.ReadToEndAsync()
+                )
+            );
+            originalContents.Position = 0;
+        }
+
+        return (originalContents, encoding);
     }
 
     ///
