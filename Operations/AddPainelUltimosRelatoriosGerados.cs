@@ -21,6 +21,7 @@ internal sealed class AddPainelUltimosRelatoriosGerados() : IBulkChangesOperatio
         var parser = browsingContext.GetService<IHtmlParser>()!;
 
         using var document = await browsingContext.OpenAsync((req) => req.Content(stream: originalContents, shouldDispose: true));
+
         // Seleciona as divs relevantes
         var content = document.QuerySelector<IHtmlDivElement>("div.content")!;                               // Conteúdo principal da página
         var panelRow = content.QuerySelector<IHtmlDivElement>("div.row")!;                                   // Row que contém os panels
@@ -76,7 +77,7 @@ internal sealed class AddPainelUltimosRelatoriosGerados() : IBulkChangesOperatio
                         <div class="panel-body" style="padding: 0 1px 1px 0;">
                             <iframe
                                 id="iframeUltimosGerados"
-                                src="relatorios-gerados-operador#<%= _IdFuncao %>"
+                                src="relatorios-gerados-operador#<%= (int)this.Funcao() %>"
                                 style="height: 100%; width: 100%; border: none;"
                             ></iframe>
                         </div>
